@@ -4,12 +4,18 @@ from world import World
 
 import random
 
+from util import Queue, Stack
+
 # Load world
 world = World()
 
 # You may uncomment the smaller graphs for development and testing purposes.
 
-# roomGraph={0: [(3, 5), {'n': 1}], 1: [(3, 6), {'s': 0, 'n': 2}], 2: [(3, 7), {'s': 1}]}
+# roomGraph = {
+#     0: [(3, 5), {"n": 1}],
+#     1: [(3, 6), {"s": 0, "n": 2}],
+#     2: [(3, 7), {"s": 1}],
+# }
 # roomGraph={0: [(3, 5), {'n': 1, 's': 5, 'e': 3, 'w': 7}], 1: [(3, 6), {'s': 0, 'n': 2}], 2: [(3, 7), {'s': 1}], 3: [(4, 5), {'w': 0, 'e': 4}], 4: [(5, 5), {'w': 3}], 5: [(3, 4), {'n': 0, 's': 6}], 6: [(3, 3), {'n': 5}], 7: [(2, 5), {'w': 8, 'e': 0}], 8: [(1, 5), {'e': 7}]}
 # roomGraph={0: [(3, 5), {'n': 1, 's': 5, 'e': 3, 'w': 7}], 1: [(3, 6), {'s': 0, 'n': 2}], 2: [(3, 7), {'s': 1}], 3: [(4, 5), {'w': 0, 'e': 4}], 4: [(5, 5), {'w': 3}], 5: [(3, 4), {'n': 0, 's': 6}], 6: [(3, 3), {'n': 5, 'w': 11}], 7: [(2, 5), {'w': 8, 'e': 0}], 8: [(1, 5), {'e': 7}], 9: [(1, 4), {'n': 8, 's': 10}], 10: [(1, 3), {'n': 9, 'e': 11}], 11: [(2, 3), {'w': 10, 'e': 6}]}
 # roomGraph={0: [(3, 5), {'n': 1, 's': 5, 'e': 3, 'w': 7}], 1: [(3, 6), {'s': 0, 'n': 2, 'e': 12, 'w': 15}], 2: [(3, 7), {'s': 1}], 3: [(4, 5), {'w': 0, 'e': 4}], 4: [(5, 5), {'w': 3}], 5: [(3, 4), {'n': 0, 's': 6}], 6: [(3, 3), {'n': 5, 'w': 11}], 7: [(2, 5), {'w': 8, 'e': 0}], 8: [(1, 5), {'e': 7}], 9: [(1, 4), {'n': 8, 's': 10}], 10: [(1, 3), {'n': 9, 'e': 11}], 11: [(2, 3), {'w': 10, 'e': 6}], 12: [(4, 6), {'w': 1, 'e': 13}], 13: [(5, 6), {'w': 12, 'n': 14}], 14: [(5, 7), {'s': 13}], 15: [(2, 6), {'e': 1, 'w': 16}], 16: [(1, 6), {'n': 17, 'e': 15}], 17: [(1, 7), {'s': 16}]}
@@ -19,10 +25,59 @@ world.loadGraph(roomGraph)
 world.printRooms()
 player = Player("Name", world.startingRoom)
 
+traversalPath = []
+directions = {"n": "s", "s": "n", "e": "w", "w": "e"}
+exits = player.currentRoom.getExits()
+graph = {}
+graph[player.currentRoom.id] = {e: "?" for e in exits}
+direction = random.choice(list(graph[player.currentRoom.id].keys()))
 
-# FILL THIS IN
-traversalPath = ['n', 's']
+while len(graph) < len(roomGraph):
+    previous = player.currentRoom
+    directionToMove = direction
+    player.travel(directionToMove)
+    traversalPath.append(directionToMove)
+    exits = {}
+    if player.currentRoom.id not in graph:
+        graph[player.currentRoom.id] = {e: "?" for e in player.currentRoom.getExits()}
+        exits = graph[player.currentRoom.id]
+    else:
+        exits = graph[player.currentRoom.id]
 
+    graph[previous.id][direction] = player.currentRoom.id
+    exits[directions[direction]] = previous.id
+    exitsToExplore = [e for e in graph[player.currentRoom.id]if graph[player.currentRoom.id][e] is "?"]
+  
+    if not exitsToExplore:
+        reverse = set()
+        q = Queue()
+        q.enqueue([(directions[direction], previous.id)])
+        while q.size() > 0:
+            path = q.dequeue()
+            move = path[-1]
+            moveTo = move[0]
+            roomId = move[1]
+
+            if roomId not in reverse:
+                reverse.add(roomId)
+                for i, j in graph[roomId].items():
+                    wayOut = None
+                    if j == "?":
+                        wayOut = i
+                        break
+                    else:
+                        copy = list(path)
+                        copy.append((i, j))
+                        q.enqueue(copy)
+
+                if wayOut:
+                    for moves in path:
+                        player.travel(moves[0])
+                        traversalPath.append(moves[0])
+                    direction = wayOut
+                    break
+    else:
+        direction = random.choice(exitsToExplore)
 
 # TRAVERSAL TEST
 visited_rooms = set()
@@ -33,11 +88,12 @@ for move in traversalPath:
     visited_rooms.add(player.currentRoom)
 
 if len(visited_rooms) == len(roomGraph):
-    print(f"TESTS PASSED: {len(traversalPath)} moves, {len(visited_rooms)} rooms visited")
+    print(
+        f"TESTS PASSED: {len(traversalPath)} moves, {len(visited_rooms)} rooms visited"
+    )
 else:
     print("TESTS FAILED: INCOMPLETE TRAVERSAL")
     print(f"{len(roomGraph) - len(visited_rooms)} unvisited rooms")
-
 
 
 #######
